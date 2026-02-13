@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Reflex Arena</title>
+<style>
+*{box-sizing:border-box}
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    background:radial-gradient(circle at top,#1b1b1b,#000);
+    overflow:hidden;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI";
+    color:#fff;
+}
+#hud{
+    position:fixed;
+    top:12px;
+    left:12px;
+    display:flex;
+    gap:20px;
+    font-size:18px;
+    z-index:10;
+}
+.badge{
+    padding:6px 12px;
+    background:rgba(255,255,255,.1);
+    border-radius:12px;
+    backdrop-filter:blur(6px);
+}
+#arena{
+    position:absolute;
+    inset:0;
+}
+.target{
+    position:absolute;
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,#ffb3b3,#ff0000);
+    box-shadow:0 0 30px rgba(255,0,0,.8);
+    cursor:pointer;
+    animation:pulse .9s infinite;
+}
+@keyframes pulse{
+    0%{transform:scale(1)}
+    50%{transform:scale(1.1)}
+    100%{transform:scale(1)}
+}
+#overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.85);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:18px;
+    font-size:28px;
+    display:none;
+}
+button{
+    padding:12px 26px;
+    font-size:18px;
+    border:none;
+    border-radius:14px;
+    background:#ff3b3b;
+    color:#fff;
+    cursor:pointer;
+}
+button:active{transform:scale(.96)}
+</style>
+</head>
+<body>
+
+<div id="hud">
+    <div class="badge" id="score">Score: 0</div>
+    <div class="badge" id="combo">Combo: x1</div>
+    <div class="badge" id="time">Time: 60.0</div>
+</div>
+
+<div id="arena"></div>
+
+<div id="overlay">
+    <div id="final"></div>
+    <button onclick="start()">Restart</button>
+</div>
+
+<script>
+const arena = document.getElementById("arena");
+const scoreBox = document.getElementById("score");
+const comboBox = document.getElementById("combo");
+const timeBox = document.getElementById("time");
+const overlay = document.getElementById("overlay");
+const final = document.getElementById("final");
+
+let score, combo, timeLeft, speed, timerTick, targetTimer;
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const audio = new AudioCtx();
+
+function beep(freq,duration){
+    const o = audio.createOscillator();
+    const g = audio.createGain();
+    o.frequency.value=freq;
+    o.connect(g);
+    g.connect(audio.destination);
+    g.gain.value=.08;
+    o.start();
+    o.stop(audio.currentTime+duration);
+}
+
+function spawn(){
+    const t = document.createElement("div");
+    t.className="target";
+    const size=70;
+    t.style.left=Math.random()*(innerWidth-size)+"px";
+    t.style.top=Math.random()*(innerHeight-size)+"px";
+
+    t.onclick=e=>{
+        e.stopPropagation();
+        beep(600+combo*40,.08);
+        score+=10*combo;
+        combo++;
+        speed*=0.94;
+        updateHUD();
+        clearTimeout(targetTimer);
+        t.remove();
+        spawn();
+    };
+
+    arena.appendChild(t);
+
+    targetTimer=setTimeout(()=>{
+        combo=1;
+        t.remove();
+        spawn();
+    },speed);
+}
+
+function updateHUD(){
+    scoreBox.textContent="Score: "+score;
+    comboBox.textContent="Combo: x"+combo;
+}
+
+function start(){
+    arena.innerHTML="";
+    overlay.style.display="none";
+    score=0;
+    combo=1;
+    timeLeft=60;
+    speed=1200;
+    updateHUD();
+    timeBox.textContent="Time: 60.0";
+
+    timerTick=setInterval(()=>{
+        timeLeft-=0.1;
+        timeBox.textContent="Time: "+timeLeft.toFixed(1);
+        if(timeLeft<=0) end();
+    },100);
+
+    spawn();
+}
+
+function end(){
+    clearInterval(timerTick);
+    clearTimeout(targetTimer);
+    arena.innerHTML="";
+    final.textContent="Final Score: "+score;
+    overlay.style.display="flex";
+    beep(180,.4);
+}
+
+document.body.addEventListener("click",()=>{
+    combo=1;
+    updateHUD();
+});
+
+start();
+</script>
+
+</body>
+</html>
